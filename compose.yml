@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  api:
+    build:
+      context: .
+    container_name: queue-api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=cache
+      - REDIS_PORT=6379
+    depends_on:
+      - cache
+    networks:
+      - queue-network
+
+  cache:
+    image: redis:6.2-alpine
+    container_name: queue-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --save 20 1 --loglevel warning
+    volumes:
+      - cache:/data
+    networks:
+      - queue-network
+
+volumes:
+  cache:
+    driver: local
+
+networks:
+  queue-network:
+    driver: bridge

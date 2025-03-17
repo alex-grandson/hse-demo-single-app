@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queue-api
+  labels:
+    app: queue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: queue
+  template:
+    metadata:
+      labels:
+        app: queue
+    spec:
+      containers:
+      - name: queue-api
+        image: ghcr.io/alex-grandson/queue-api:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: REDIS_HOST
+          value: "queue-redis"
+        - name: REDIS_PORT
+          value: "6379"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queue-redis
+  labels:
+    app: queue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: queue-redis
+  template:
+    metadata:
+      labels:
+        app: queue-redis
+    spec:
+      containers:
+      - name: queue-redis
+        image: redis:6.2-alpine
+        ports:
+        - containerPort: 6379
+        command: ["redis-server", "--save", "20", "1", "--loglevel", "warning"]

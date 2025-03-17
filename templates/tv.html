@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Queue TV Display</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .current-ticket {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .waiting-tickets {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+        .ticket-list {
+            list-style: none;
+            padding: 0;
+        }
+        .ticket-list li {
+            margin: 5px 0;
+        }
+    </style>
+    <script>
+        async function fetchQueueStatus() {
+            const currentResponse = await fetch('/current');
+            const currentData = await currentResponse.json();
+
+            const queueResponse = await fetch('/admin/tickets');
+            const queueData = await queueResponse.json();
+
+            const currentTicket = currentData.current_ticket || "None";
+            document.getElementById('current-ticket').innerText = `Currently Serving: ${currentTicket}`;
+
+            const waitingTickets = queueData.filter(ticket => ticket.status === 'waiting');
+            const waitingList = document.getElementById('waiting-tickets');
+            waitingList.innerHTML = waitingTickets.map(ticket => `<li>Ticket #${ticket.ticket_number}</li>`).join('');
+        }
+
+        // Refresh queue status every 5 seconds
+        setInterval(fetchQueueStatus, 5000);
+        // Initial load
+        fetchQueueStatus();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="current-ticket" id="current-ticket">Currently Serving: None</div>
+        <div class="waiting-tickets">
+            <h2>Waiting Tickets</h2>
+            <ul class="ticket-list" id="waiting-tickets"></ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Queue Kiosk</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .button {
+            display: block;
+            width: 80%;
+            max-width: 300px;
+            margin: 10px auto;
+            padding: 20px;
+            font-size: 18px;
+            color: #fff;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .ticket-display {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 80%;
+            max-width: 400px;
+        }
+    </style>
+    <script>
+        async function getTicket(serviceType) {
+            try {
+                const response = await fetch('/ticket', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ service_type: serviceType })
+                });
+
+                const data = await response.json();
+                document.getElementById('ticket-number').innerText =
+                    `Ticket Number: ${data.ticket_number}\nService: ${data.service_type}`;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('ticket-number').innerText = 'Error getting ticket';
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Queue</h1>
+        <button class="button" onclick="getTicket('general')">General Service</button>
+        <button class="button" onclick="getTicket('priority')">Priority Service</button>
+        <button class="button" onclick="getTicket('consultation')">Consultation</button>
+
+        <div class="ticket-display">
+            <h2>Your Ticket</h2>
+            <div id="ticket-number">Please select a service</div>
+        </div>
+    </div>
+</body>
+</html>
