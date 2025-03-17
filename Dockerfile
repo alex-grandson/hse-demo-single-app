@@ -10,11 +10,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libffi-dev \
     libssl-dev \
+    libpq-dev \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
 RUN curl -sSL https://install.python-poetry.org | python3 - && \
     ln -s /root/.local/bin/poetry /usr/local/bin/poetry
+
+# Add Poetry to PATH
+ENV PATH="/root/.local/bin:$PATH"
 
 # Copy the application files
 COPY . /app
