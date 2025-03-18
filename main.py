@@ -7,13 +7,11 @@ from pydantic import BaseModel
 import redis
 from datetime import datetime
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 
 app = FastAPI()
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
 templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 security = HTTPBasic()
 
