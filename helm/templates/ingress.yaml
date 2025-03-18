@@ -1,0 +1,50 @@
+{{- if .Values.ingress.enabled -}}
+{{- if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: networking.k8s.io/v1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ .Values.serviceName }}
+  labels:
+    {{ include "helm-chart-label" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  rules:
+    - host: {{ .Values.fqdn }}.{{ .Values.host }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: {{ .Values.ingress.name }}
+                port:
+                  number: {{ .Values.ingress.port }}
+            path: {{ .Values.ingress.path }}
+            pathType: Prefix
+            {{- if .Values.backend.enabled }}
+          - backend:
+              service:
+                name: {{ .Values.backend1.name }}
+                port:
+                  number: {{ .Values.backend1.port }}
+            path: {{ .Values.backend1.path }}
+            pathType: Prefix
+          - backend:
+              service:
+                name: {{ .Values.backend2.name }}
+                port:
+                  number: {{ .Values.backend2.port }}
+            path: {{ .Values.backend2.path }}
+            pathType: Prefix
+            {{- end }}
+  {{- if .Values.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.fqdn }}.{{ .Values.host }}
+      secretName: {{ .Values.serviceName }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,201 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.serviceName }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{ include "helm-chart-label" .}}
+    "app.kubernetes.io/managed-by": "{{ .Release.Service }}"
+    "app.kubernetes.io/instance": "{{ .Release.Name }}"
+    "app.kubernetes.io/component": "{{ .Values.serviceName }}"
+    "app": "{{ .Values.serviceName }}"
+spec:
+  replicas: {{ default 1 .Values.replicaCount }}
+  strategy:
+    type: {{ if .Values.persistence.enabled }}Recreate{{ else }}RollingUpdate
+    rollingUpdate:
+{{ toYaml .Values.rollingUpdate | indent 6 }}
+    {{- end }}
+  selector:
+    matchLabels:
+      "app.kubernetes.io/component": "{{ .Values.serviceName }}"
+      "app.kubernetes.io/instance": "{{ .Release.Name }}"
+  revisionHistoryLimit: 3
+  template:
+    metadata:
+      labels:
+        {{ include "helm-chart-label" .}}
+        "app.kubernetes.io/managed-by": "{{ .Release.Service }}"
+        "app.kubernetes.io/instance": "{{ .Release.Name }}"
+        "app.kubernetes.io/component": "{{ .Values.serviceName }}"
+        "app": "{{ .Values.serviceName }}"
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{ if .Values.containerSecurityContext.enabled }}
+      securityContext:
+        runAsUser: {{ .Values.containerSecurityContext.runAsUser }}
+        runAsGroup: {{ .Values.containerSecurityContext.runAsGroup }}
+        # runAsNonRoot: {{ default .Values.containerSecurityContext.runAsNonRoot true }}
+        # privileged: {{ default .Values.containerSecurityContext.privileged false }}
+        # readOnlyRootFilesystem: {{ default .Values.containerSecurityContext.readOnlyRootFilesystem true }}
+        # allowPrivilegeEscalation: {{ default .Values.containerSecurityContext.allowPrivilegeEscalation false }}
+        capabilities:
+          drop:
+            - ALL
+      {{- end }}
+      {{ if .Values.persistence.enabled }}
+      volumes:
+        - name: {{ .Values.serviceName }}-{{ .Values.persistence.name }}-pv-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.serviceName }}-{{ .Values.persistence.name }}-pv-claim
+      {{- end }}
+      {{ if .Values.config.enabled }}
+      volumes:
+        - name: {{ .Values.config.name }}
+          configMap:
+            name: {{ .Values.config.name }}
+            defaultMode: 0777
+      {{- end }}
+      {{- if and (eq .Values.persistence.enabled true) (eq .Values.config.enabled true) }}
+      volumes:
+        - name: {{ .Values.serviceName }}-{{ .Values.persistence.name }}-pv-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.serviceName }}-{{ .Values.persistence.name }}-pv-claim
+        - name: {{ .Values.config.name }}
+          configMap:
+            name: {{ .Values.config.name }}
+            defaultMode: 0777
+      {{- end }}
+{{- if .Values.initContainers }}
+      initContainers:
+{{- toYaml .Values.initContainers | nindent 6 }}
+{{- end }}
+      containers:
+        - name: {{ .Values.serviceName }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{ if .Values.podSecurityContext.enabled }}
+          securityContext:
+            fsGroupChangePolicy: {{ .Values.podSecurityContext.fsGroupChangePolicy }}
+            fsGroup: {{ .Values.podSecurityContext.fsGroup }}
+          {{- end }}
+          {{- if .Values.initArgs }}
+          args: {{- toYaml .Values.initArgs| nindent 12 }}
+          {{- end }}
+          {{- if .Values.initCommand }}
+          command: {{- toYaml .Values.initCommand | nindent 12 }}
+          {{- end }}
+          env:
+            {{- if .Values.containerEnv }}
+{{ toYaml .Values.containerEnv | indent 12 }}
+            {{- end }}
+          ports:
+            - name: {{ .Values.servicePort }}-tcp
+              containerPort: {{ .Values.servicePort }}
+          {{ if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: {{ .Values.serviceName }}-{{ .Values.persistence.name }}-pv-volume
+              mountPath: {{ .Values.persistence.mountPath }}
+          {{- end }}
+          {{ if .Values.config.enabled }}
+          volumeMounts:
+            - name: {{ .Values.config.name }}
+              mountPath: {{ .Values.config.path }}
+          {{- end }}
+          {{- if and (eq .Values.persistence.enabled true) (eq .Values.config.enabled true) }}
+          volumeMounts:
+            - name: {{ .Values.serviceName }}-{{ .Values.persistence.name }}-pv-volume
+              mountPath: {{ .Values.persistence.mountPath }}
+            - name: {{ .Values.config.name }}
+              mountPath: {{ .Values.config.path }}
+          {{- end }}
+{{- if .Values.healthProbes }}
+{{- if and .Values.probes }}
+
+{{- end }}
+{{- if .Values.typeStartupProbe.exec.enabled }}
+          livenessProbe:
+            exec:
+              command:
+{{ toYaml .Values.probes.startupProbe.exec.command | indent 14 }}
+            initialDelaySeconds: {{ .Values.healthProbeLivenessInitialDelay }}
+            periodSeconds: {{ .Values.healthProbeLivenessPeriodSeconds }}
+            timeoutSeconds: {{ .Values.healthProbesLivenessTimeout }}
+            failureThreshold: {{ .Values.healthProbeLivenessFailureThreshold }}
+          readinessProbe:
+            exec:
+              command:
+{{ toYaml .Values.probes.startupProbe.exec.command | indent 14 }}
+            initialDelaySeconds: {{ .Values.healthProbeLivenessInitialDelay }}
+            periodSeconds: {{ .Values.healthProbeLivenessPeriodSeconds }}
+            timeoutSeconds: {{ .Values.healthProbesLivenessTimeout }}
+            failureThreshold: {{ .Values.healthProbeLivenessFailureThreshold }}
+          startupProbe:
+            exec:
+              command:
+{{ toYaml .Values.probes.startupProbe.exec.command | indent 14 }}
+            initialDelaySeconds: {{ .Values.healthProbeLivenessInitialDelay }}
+            periodSeconds: {{ .Values.healthProbeLivenessPeriodSeconds }}
+            timeoutSeconds: {{ .Values.healthProbesLivenessTimeout }}
+            failureThreshold: {{ .Values.healthProbeLivenessFailureThreshold }}
+{{- end}}
+{{- if .Values.typeStartupProbe.tcpSocket.enabled }}
+          livenessProbe:
+            tcpSocket:
+              host: "{{ .Values.probes.startupProbe.tcpSocket.host }}"
+              port: {{ .Values.probes.startupProbe.tcpSocket.port }}
+            initialDelaySeconds: {{ .Values.healthProbeLivenessInitialDelay }}
+            periodSeconds: {{ .Values.healthProbeLivenessPeriodSeconds }}
+            timeoutSeconds: {{ .Values.healthProbesLivenessTimeout }}
+            failureThreshold: {{ .Values.healthProbeLivenessFailureThreshold }}
+          readinessProbe:
+            tcpSocket:
+              host: "{{ .Values.probes.startupProbe.tcpSocket.host }}"
+              port: {{ .Values.probes.startupProbe.tcpSocket.port }}
+            initialDelaySeconds: {{ .Values.healthProbeLivenessInitialDelay }}
+            periodSeconds: {{ .Values.healthProbeLivenessPeriodSeconds }}
+            timeoutSeconds: {{ .Values.healthProbesLivenessTimeout }}
+            failureThreshold: {{ .Values.healthProbeLivenessFailureThreshold }}
+          startupProbe:
+            tcpSocket:
+              host: "{{ .Values.probes.startupProbe.tcpSocket.host }}"
+              port: {{ .Values.probes.startupProbe.tcpSocket.port }}
+            initialDelaySeconds: {{ .Values.healthProbeLivenessInitialDelay }}
+            periodSeconds: {{ .Values.healthProbeLivenessPeriodSeconds }}
+            timeoutSeconds: {{ .Values.healthProbesLivenessTimeout }}
+            failureThreshold: {{ .Values.healthProbeLivenessFailureThreshold }}
+{{- end }}
+{{- if .Values.typeStartupProbe.httpGet.enabled }}
+          livenessProbe:
+            httpGet:
+              path: "{{ .Values.probes.startupProbe.httpGet.path }}"
+              port: {{ .Values.probes.startupProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.healthProbeLivenessInitialDelay }}
+            periodSeconds: {{ .Values.healthProbeLivenessPeriodSeconds }}
+            timeoutSeconds: {{ .Values.healthProbesLivenessTimeout }}
+            failureThreshold: {{ .Values.healthProbeLivenessFailureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: "{{ .Values.probes.startupProbe.httpGet.path }}"
+              port: {{ .Values.probes.startupProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.healthProbeReadinessInitialDelay }}
+            periodSeconds: {{ .Values.healthProbeReadinessPeriodSeconds }}
+            timeoutSeconds: {{ .Values.healthProbesReadinessTimeout }}
+            failureThreshold: {{ .Values.healthProbeReadinessFailureThreshold }}
+          startupProbe:
+            httpGet:
+              path: "{{ .Values.probes.startupProbe.httpGet.path }}"
+              port: {{ .Values.probes.startupProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.healthProbeReadinessInitialDelay }}
+            periodSeconds: {{ .Values.probes.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.startupProbe.failureThreshold }}
+{{- end }}
+{{- end }}
+          {{- with .Values.resources }}
+          resources:
+{{ toYaml . | indent 12 }}
+          {{- end }}

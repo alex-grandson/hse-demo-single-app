@@ -1,0 +1,32 @@
+version: '3'
+
+vars:
+  CHART_VERSION:
+    sh: yq '.version' Chart.yaml
+  CHART_NAME:
+    sh: yq '.name' Chart.yaml
+
+tasks:
+  debug:
+    desc: Generate manifests from chart and values to debug
+    vars:
+      FILE: debug/manifests.yaml
+      SERVICE_NAME: grafana
+    cmds:
+      - mkdir -p debug
+      - helm template queue-app . -f values.yml --debug > debug/queue-app.yml
+      - helm template redis     . -f redis.yml  --debug > debug/redis.yml
+
+  lint:
+    desc: Lint the Helm chart
+    cmds:
+      - helm lint .
+
+  deploy:
+    desc: Deploy demo service
+    vars:
+      SERVICE_NAME: grafana
+      VALUES: example/{{.SERVICE}}.yaml
+      NAMESPACE: default
+    cmds:
+      - helm upgrade --install -n {{.NAMESPACE}} -f {{.VALUES}} {{.SERVICE_NAME}} .

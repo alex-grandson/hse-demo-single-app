@@ -1,0 +1,78 @@
+{{- if .Values.cronJob.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.serviceName }}
+  namespace: {{ .Values.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.serviceName }}
+  namespace: {{ .Values.namespace }}
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - create
+      - get
+      - delete
+      - list
+      - patch
+      - update
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.serviceName }}
+  namespace: {{ .Values.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.serviceName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.serviceName }}
+    namespace: {{ .Values.namespace }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Values.cronJob.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  successfulJobsHistoryLimit: {{ .Values.cronJob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronJob.failedJobsHistoryLimit }}
+  concurrencyPolicy: Forbid
+  schedule: {{ .Values.cronJob.schedule | quote }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.cronJob.jobTemplate.backoffLimit }}
+      activeDeadlineSeconds: {{ .Values.cronJob.jobTemplate.activeDeadlineSeconds }}
+      ttlSecondsAfterFinished: {{ .Values.cronJob.jobTemplate.ttlSecondsAfterFinished }}
+      template:
+        spec:
+          serviceAccountName: {{ .Values.serviceName }}
+          restartPolicy: Never
+          containers:
+            - name: {{ .Values.cronJob.jobTemplate.containers.name }}
+              image: {{ .Values.cronJob.jobTemplate.containers.image }}
+              command:
+{{ toYaml .Values.cronJob.jobTemplate.containers.command | indent 14 }}
+{{- end }}

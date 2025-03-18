@@ -1,0 +1,81 @@
+{{- if .Values.healers.terminatingStatusInspect.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: podhealer
+  namespace: {{ .Values.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: podhealer
+  namespace: {{ .Values.namespace }}
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - create
+      - get
+      - delete
+      - list
+      - patch
+      - update
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: podhealer
+  namespace: {{ .Values.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: podhealer
+subjects:
+  - kind: ServiceAccount
+    name: podhealer
+    namespace: {{ .Values.namespace }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: inspect-suspending-pods-40min
+  namespace: {{ .Values.namespace }}
+spec:
+  successfulJobsHistoryLimit: 100
+  failedJobsHistoryLimit: 100
+  concurrencyPolicy: Forbid
+  schedule: "*/40 * * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 5
+      activeDeadlineSeconds: 500
+      ttlSecondsAfterFinished: 500
+      template:
+        spec:
+          serviceAccountName: podhealer
+          restartPolicy: Never
+          containers:
+            - name: 'kubectl'
+              image: 'artifactory-spb.atmosphere.yadro.com/yadro-proxy-dockerhub/bitnami/kubectl:latest'
+              command:
+                - bash
+                - -c
+                - >-
+                  for p in $(kubectl get pods | grep -i terminating | awk '{print $1}'); do kubectl delete pod $p --grace-period=0 --force;done
+{{- end }}

@@ -1,0 +1,299 @@
+---
+# Source: hse-app/templates/crashloopbackoff-inspect.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: podhealer
+  namespace: prod-portal
+---
+# Source: hse-app/templates/terminating-status-inspect.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: podhealer
+  namespace: prod-portal
+---
+# Source: hse-app/templates/crashloopbackoff-inspect.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: podhealer
+  namespace: prod-portal
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - create
+      - get
+      - delete
+      - list
+      - patch
+      - update
+      - watch
+---
+# Source: hse-app/templates/terminating-status-inspect.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: podhealer
+  namespace: prod-portal
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - create
+      - get
+      - delete
+      - list
+      - patch
+      - update
+      - watch
+---
+# Source: hse-app/templates/crashloopbackoff-inspect.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: podhealer
+  namespace: prod-portal
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: podhealer
+subjects:
+  - kind: ServiceAccount
+    name: podhealer
+    namespace: prod-portal
+---
+# Source: hse-app/templates/terminating-status-inspect.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: podhealer
+  namespace: prod-portal
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: podhealer
+subjects:
+  - kind: ServiceAccount
+    name: podhealer
+    namespace: prod-portal
+---
+# Source: hse-app/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal-umami
+  namespace: prod-portal
+  labels:
+    app: portal-umami
+    name: portal-umami
+spec:
+  ports:
+    - name: 3000-tcp
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+  selector:
+    app.kubernetes.io/component: portal-umami
+  sessionAffinity: None
+  type: ClusterIP
+status:
+  loadBalancer: {}
+---
+# Source: hse-app/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal-umami
+  namespace: prod-portal
+  labels:
+    
+    "app.kubernetes.io/managed-by": "Helm"
+    "app.kubernetes.io/instance": "queue-app"
+    "app.kubernetes.io/component": "portal-umami"
+    "app": "portal-umami"
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      {}
+  selector:
+    matchLabels:
+      "app.kubernetes.io/component": "portal-umami"
+      "app.kubernetes.io/instance": "queue-app"
+  revisionHistoryLimit: 3
+  template:
+    metadata:
+      labels:
+        
+        "app.kubernetes.io/managed-by": "Helm"
+        "app.kubernetes.io/instance": "queue-app"
+        "app.kubernetes.io/component": "portal-umami"
+        "app": "portal-umami"
+    spec:
+      
+      
+      
+      containers:
+        - name: portal-umami
+          image: "artifactory-spb.atmosphere.yadro.com/yadro-proxy-ghcr-io-docker/umami-software/umami:postgresql-v2.15.1"
+          imagePullPolicy: Always
+          
+          env:
+            - name: DATABASE_URL
+              value: postgresql://umami:umami@portal-umami-db.yadro.dev:5432/umami
+            - name: DATABASE_TYPE
+              value: postgresql
+            - name: APP_SECRET
+              value: umamiUMAMI
+            - name: CLIENT_IP_HEADER
+              value: x-no-ip
+          ports:
+            - name: 3000-tcp
+              containerPort: 3000
+          
+          
+          livenessProbe:
+            httpGet:
+              path: "/api/heartbeat"
+              port: 3000
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: "/api/heartbeat"
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: "/api/heartbeat"
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 
+            timeoutSeconds: 
+            failureThreshold: 
+          resources:
+            limits:
+              cpu: 300m
+              memory: 600Mi
+            requests:
+              cpu: 300m
+              memory: 600Mi
+---
+# Source: hse-app/templates/crashloopbackoff-inspect.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: inspect-crash-pod-15min
+  namespace: prod-portal
+spec:
+  successfulJobsHistoryLimit: 100
+  failedJobsHistoryLimit: 100
+  concurrencyPolicy: Forbid
+  schedule: "*/15 * * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 5
+      activeDeadlineSeconds: 500
+      ttlSecondsAfterFinished: 500
+      template:
+        spec:
+          serviceAccountName: podhealer
+          restartPolicy: Never
+          containers:
+            - name: 'kubectl'
+              image: 'artifactory-spb.atmosphere.yadro.com/yadro-proxy-dockerhub/bitnami/kubectl:latest'
+              command:
+                - bash
+                - -c
+                - >-
+                  for p in $(kubectl get pods | grep -i crashloopbackoff | awk '{print $1}' | cut -d'-' -f-2); do kubectl rollout restart deployment/$p && kubectl rollout status deployment/$p;done
+---
+# Source: hse-app/templates/terminating-status-inspect.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: inspect-suspending-pods-40min
+  namespace: prod-portal
+spec:
+  successfulJobsHistoryLimit: 100
+  failedJobsHistoryLimit: 100
+  concurrencyPolicy: Forbid
+  schedule: "*/40 * * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 5
+      activeDeadlineSeconds: 500
+      ttlSecondsAfterFinished: 500
+      template:
+        spec:
+          serviceAccountName: podhealer
+          restartPolicy: Never
+          containers:
+            - name: 'kubectl'
+              image: 'artifactory-spb.atmosphere.yadro.com/yadro-proxy-dockerhub/bitnami/kubectl:latest'
+              command:
+                - bash
+                - -c
+                - >-
+                  for p in $(kubectl get pods | grep -i terminating | awk '{print $1}'); do kubectl delete pod $p --grace-period=0 --force;done
+---
+# Source: hse-app/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portal-umami
+  labels:
+    
+    
+spec:
+  rules:
+    - host: portal-umami.yadro.dev
+      http:
+        paths:
+          - backend:
+              service:
+                name: portal-umami
+                port:
+                  number: 3000
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - portal-umami.yadro.dev
+      secretName: portal-umami

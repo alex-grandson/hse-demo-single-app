@@ -1,0 +1,148 @@
+host: "localhost"
+namespace: default
+serviceName: redis-db
+fqdn: redis-db
+image:
+  repository: bitnami/redis
+  tag: '6.2.16-debian-12-r3'
+  pullPolicy: Always
+  imagePullSecrets: ""
+replicaCount: 1
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPU: 80
+  targetMemory: 70
+rollingUpdate: {}
+resources:
+  limits:
+    cpu: 300m
+    memory: 1200Mi
+  requests:
+    cpu: 300m
+    memory: 600Mi
+containerSecurityContext:
+  enabled: false
+  runAsUser: {}
+  runAsGroup: {}
+  # runAsNonRoot: false
+  # privileged: true
+  # readOnlyRootFilesystem: false
+  # allowPrivilegeEscalation: true
+podSecurityContext:
+  enabled: false
+  fsGroup: {}
+  # fsGroupChangePolicy: 'Always'
+persistence:
+  enabled: false
+  name: prod
+  size: 1Gi
+  path: '/redis/prod'
+  mountPath: '/bitnami/redis'
+config:
+  enabled: false
+  name: {} #'redis-conf'
+  path: {} #'/opt/bitnami/redis/conf'
+targetPort: 6379
+servicePort: 6379
+containerEnv:
+- name: ALLOW_EMPTY_PASSWORD
+  value: 'yes'
+initContainers: []
+  # - name: volume-permissions
+  #   image: 'bitnami/minideb:latest'
+  #   imagePullPolicy: Always
+  #   command: ['sh', '-c', 'chown -R 1001:0 /bitnami/redis']
+    # volumeMounts:
+    # - mountPath: /bitnami/redis
+    #   name: redis-db-prod-pv-volume
+initCommand: []
+initArgs: []
+healthProbes: true
+healthProbesLivenessTimeout: 5
+healthProbesReadinessTimeout: 5
+healthProbeLivenessPeriodSeconds: 10
+healthProbeReadinessPeriodSeconds: 10
+healthProbeLivenessFailureThreshold: 5
+healthProbeReadinessFailureThreshold: 3
+healthProbeLivenessInitialDelay: 90
+healthProbeReadinessInitialDelay: 60
+typeStartupProbe:
+  exec:
+    enabled: true
+  tcpSocket:
+    enabled: false
+  httpGet:
+    enabled: false
+probes:
+  startupProbe:
+    exec:
+      command:
+        - redis-server
+        - --version
+    tcpSocket:
+      host: {}
+      port: {}
+    httpGet:
+      path: {}
+      port: {}
+service:
+  enabled: true
+ingress:
+  enabled: false
+  name: {}
+  annotations: {}
+  port: {}
+  path: {}
+tls:
+  enabled: false
+backend:
+  enabled: false
+backend1:
+  name: {}
+  annotations: {}
+  port: {}
+  path: {}
+backend2:
+  name: {}
+  annotations: {}
+  port: {}
+  path: {}
+healers:
+  crashloopBackoffInspect:
+    enabled: true
+  terminatingStatusInspect:
+    enabled: true
+installLatestImage:
+  enabled: false
+  name: {}
+  schedule: {}
+  successfulJobsHistoryLimit: {}
+  failedJobsHistoryLimit: {}
+  jobTemplate:
+    backoffLimit: {}
+    activeDeadlineSeconds: {}
+    ttlSecondsAfterFinished: {}
+    containers:
+      name: {}
+      image: {}
+      command: []
+cronJob:
+  enabled: false
+  name: {}
+  schedule: {}
+  successfulJobsHistoryLimit: {}
+  failedJobsHistoryLimit: {}
+  jobTemplate:
+    backoffLimit: {}
+    activeDeadlineSeconds: {}
+    ttlSecondsAfterFinished: {}
+    containers:
+      name: {}
+      image: {}
+      command: []
+        # - bash
+        # - -c
+        # - >-
+        #   for p in $(kubectl get pods | grep Running | awk '{print $1}'); do kubectl describe pod $p;done
