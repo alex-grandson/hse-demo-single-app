@@ -1,72 +1,49 @@
-# Deploying the Queue App on K3s
+# Образовательный проект: Управление приложениями с Kubernetes
 
-This guide explains how to set up a single-node K3s cluster and deploy the Queue app.
+## Описание проекта
 
-## Prerequisites
+Этот проект создан для образовательных целей и ориентирован на школьников старших классов, которые хотят познакомиться с современными технологиями управления приложениями. С помощью этого приложения вы сможете:
 
-- A Linux machine with at least 2GB of RAM.
-- Docker installed on the machine.
+- Изучить основы работы с Kubernetes — популярной платформой для оркестрации контейнеров.
+- Научиться управлять состоянием приложения (state management) в распределенной системе.
+- Создать собственный Custom Resource Definition (CRD) для автоматического восстановления (autoheal) приложений.
 
-## Step 1: Install K3s
+## Что делает приложение?
 
-1. Run the following command to install K3s:
-   ```bash
-   curl -sfL https://get.k3s.io | sh -
-   ```
+Демонстрационное приложение представляет собой систему управления электронной очередью. Оно включает в себя следующие функции:
 
-2. Verify that K3s is running:
-   ```bash
-   sudo kubectl get nodes
-   ```
+- **Выдача талонов**: Пользователи могут выбрать тип услуги (например, общая, приоритетная или консультация) и получить уникальный номер талона.
+- **Административная панель**: Администраторы могут управлять очередью, переводя талоны из статуса "ожидание" в "обслуживание" и далее в "завершено".
+- **Дисплей очереди**: Отображение текущего номера талона, который обслуживается, и списка ожидающих талонов.
+- **Интеграция с Redis**: Хранение данных о талонах и очереди в базе данных Redis для обеспечения высокой производительности.
+- **REST API**: Реализация API для взаимодействия с системой, включая создание талонов, получение текущего талона и управление очередью.
 
-## Step 2: Build and Push Docker Images
+Приложение демонстрирует, как можно использовать современные технологии для создания надежной и масштабируемой системы.
 
-1. Build the Docker image for the FastAPI app:
-   ```bash
-   docker build -t queue-api:latest .
-   ```
+## Чему вы научитесь?
 
-2. Save the image to a tar file:
-   ```bash
-   docker save queue-api:latest -o queue-api.tar
-   ```
+1. **Работа с Kubernetes**:
+   - Разворачивание приложений в кластере.
+   - Управление ресурсами Kubernetes (Pods, Deployments, Services и др.).
 
-3. Load the image into the K3s cluster:
-   ```bash
-   sudo k3s ctr images import queue-api.tar
-   ```
+2. **Управление состоянием приложения**:
+   - Понимание, как приложения сохраняют и восстанавливают свое состояние.
+   - Использование Kubernetes для управления состоянием.
 
-## Step 3: Deploy the App
+3. **Создание CRD для Autoheal**:
+   - Разработка собственного ресурса Kubernetes.
+   - Реализация логики автоматического восстановления приложений при сбоях.
 
-1. Apply the Kubernetes manifests:
-   ```bash
-   kubectl apply -f .k8s/deployment.yaml
-   kubectl apply -f .k8s/service.yaml
-   ```
+Этот проект поможет вам получить практические навыки работы с Kubernetes и научиться создавать надежные и масштабируемые приложения.
 
-2. Verify the deployments:
-   ```bash
-   kubectl get pods
-   ```
+## Как начать?
 
-3. Verify the services:
-   ```bash
-   kubectl get services
-   ```
+1. Установите Kubernetes и необходимые инструменты (например, kubectl, Minikube).
+2. Следуйте инструкциям в репозитории для развертывания приложения.
+3. Выполняйте задания, чтобы изучить ключевые концепции и реализовать свой CRD для autoheal.
 
-## Step 4: Access the App
+Присоединяйтесь к проекту и начните свое путешествие в мир современных технологий!
 
-1. Find the NodePort for the `queue-api` service:
-   ```bash
-   kubectl get service queue-api
-   ```
+## Kubernetes
 
-2. Access the app in your browser using `http://<node-ip>:<node-port>`.
-
-## Cleanup
-
-To remove the app and K3s, run:
-```bash
-kubectl delete -f .k8s/
-sudo /usr/local/bin/k3s-uninstall.sh
-```
+Инструкция по развертыванию приложения на K3s [здесь](docs/k8s-startup.md).
