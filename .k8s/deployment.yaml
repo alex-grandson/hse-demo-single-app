@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: queue-api
-        image: ghcr.io/alex-grandson/queue-api:latest
+        image: ghcr.io/alex-grandson/hse-demo-single-app:latest
         ports:
         - containerPort: 8000
         env:
