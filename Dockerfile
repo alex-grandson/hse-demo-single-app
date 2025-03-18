@@ -4,15 +4,6 @@ FROM python:3.12-slim
 # Set the working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libffi-dev \
-    libssl-dev \
-    libpq-dev \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 # Copy the application files
 COPY . /app
 
